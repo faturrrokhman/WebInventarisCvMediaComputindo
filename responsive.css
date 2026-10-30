@@ -1,0 +1,85 @@
+/* Shared responsive improvements for CV Media Computindo inventory app */
+:root { color-scheme: light; }
+html {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+}
+body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+body > main {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-left: 0;
+}
+#sidebar-target {
+    min-width: 0;
+    flex: 0 0 auto;
+}
+main, main > *, main section, main article, main aside {
+    min-width: 0;
+}
+img, video, canvas, iframe, svg {
+    max-width: 100%;
+}
+input, select, textarea, button {
+    max-width: 100%;
+}
+input, select, textarea {
+    min-width: 0;
+}
+.overflow-x-auto {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+table {
+    max-width: 100%;
+}
+/* Prevent long customer names, serial numbers, and URLs from stretching cards. */
+.break-words, td, th {
+    overflow-wrap: anywhere;
+}
+/* Make Leaflet touch interactions comfortable on mobile. */
+.leaflet-container {
+    touch-action: pan-x pan-y;
+}
+@media (min-width: 768px) {
+    body > main {
+        width: calc(100% - 16rem);
+        max-width: calc(100% - 16rem);
+        margin-left: 16rem;
+    }
+}
+@media (max-width: 767px) {
+    body > main {
+        margin-left: 0;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    /* Two-column forms become easier to use on narrow phones. */
+    .grid.grid-cols-2 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    /* Keep the mobile navigation and modal content within the viewport. */
+    .fixed.inset-0 > div {
+        max-width: calc(100vw - 1rem);
+    }
+    #networkMap {
+        height: 52vh;
+        min-height: 340px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

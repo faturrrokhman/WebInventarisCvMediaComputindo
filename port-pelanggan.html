@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <style id="sidebar-scrollbar-fix">
+      #mainSidebar .sidebar-nav-scroll { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+      #mainSidebar .sidebar-nav-scroll::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+    </style>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Port & Pelanggan - CV Media Computindo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="responsive.css?v=20261015">
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+    <div id="sidebar-target"></div>
+    <main class="w-full p-4 pt-24 md:ml-64 md:p-10 md:pt-10">
+        <header class="mb-8">
+            <div class="mb-3 flex items-center gap-2 text-sm text-slate-400">
+                <a href="dashboard.html" class="hover:text-blue-600">Dashboard</a>
+                <i class="fas fa-chevron-right text-[10px]"></i>
+                <span class="font-semibold text-slate-600">Port & Pelanggan</span>
+            </div>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 class="flex items-center gap-3 text-2xl font-black md:text-3xl"><i class="fas fa-ethernet text-blue-600"></i>Port & Pelanggan</h1>
+                    <p class="mt-2 max-w-3xl text-slate-500">Hubungkan port pada ODP dengan data pemasangan yang sudah tersimpan. Data pelanggan tidak perlu dimasukkan ulang.</p>
+                </div>
+                <button id="refreshBtn" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold shadow-sm hover:bg-slate-100"><i class="fas fa-rotate"></i> Muat ulang</button>
+            </div>
+        </header>
+
+        <div id="notice" class="mb-5 hidden rounded-xl border px-4 py-3 text-sm" role="status" aria-live="polite"></div>
+
+        <section class="mb-6 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:p-6">
+            <label for="odpSelect" class="mb-2 block text-sm font-bold text-slate-700">Pilih ODP</label>
+            <div class="flex flex-col gap-3 sm:flex-row">
+                <select id="odpSelect" class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                    <option value="">Memuat data ODP...</option>
+                </select>
+                <button id="loadPortsBtn" type="button" class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"><i class="fas fa-list-check mr-2"></i>Tampilkan Port</button>
+            </div>
+            <p class="mt-3 text-xs leading-5 text-slate-500">Saat ODP dipilih, sistem menyiapkan catatan port sesuai kapasitas yang terdaftar. Pastikan kapasitas dan kondisi port sesuai informasi teknisi lapangan.</p>
+        </section>
+
+        <section id="summary" class="mb-6 hidden grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><p class="text-sm text-slate-500">Kapasitas ODP</p><p id="summaryCapacity" class="mt-1 text-2xl font-black">—</p></div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><p class="text-sm text-slate-500">Port terpakai</p><p id="summaryUsed" class="mt-1 text-2xl font-black text-blue-700">—</p></div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><p class="text-sm text-slate-500">Port kosong/tersedia</p><p id="summaryFree" class="mt-1 text-2xl font-black text-emerald-700">—</p></div>
+        </section>
+
+        <section id="emptyState" class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl text-blue-600"><i class="fas fa-ethernet"></i></div>
+            <h2 id="emptyTitle" class="text-lg font-bold">Pilih ODP untuk melihat port</h2>
+            <p id="emptyText" class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">Daftar ODP akan diambil dari database. Pelanggan yang tersedia berasal dari menu Pemasangan.</p>
+            <a href="data-odp.html" class="mt-5 inline-flex items-center gap-2 rounded-xl border border-blue-200 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-50"><i class="fas fa-network-wired"></i> Buka Data ODP</a>
+        </section>
+
+        <section id="portsSection" class="hidden">
+            <div class="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div><h2 id="selectedOdpTitle" class="text-lg font-black">Port ODP</h2><p class="mt-1 text-sm text-slate-500">Pilih pelanggan, atur status port, lalu tekan Simpan pada port tersebut.</p></div>
+                <p class="text-xs text-slate-400">Satu data pemasangan hanya dapat terhubung ke satu port.</p>
+            </div>
+            <div id="portsGrid" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"></div>
+        </section>
+    </main>
+
+<script>
+const API_PORT = 'api_port.php';
+let odps = [];
+let installations = [];
+let currentOdp = null;
+let ports = [];
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[character]));
+}
+function showNotice(message, type = 'error') {
+    const notice = document.getElementById('notice');
+    notice.textContent = message;
+    notice.className = 'mb-5 rounded-xl border px-4 py-3 text-sm ' + (type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800');
+}
+function hideNotice() { document.getElementById('notice').classList.add('hidden'); }
+async function apiGet(params) {
+    const response = await fetch(API_PORT + '?' + new URLSearchParams(params), {credentials:'same-origin'});
+    const json = await response.json();
+    if (!response.ok || !json.success) throw new Error(json.message || 'Permintaan gagal.');
+    return json.data;
+}
+async function apiPost(values) {
+    const response = await fetch(API_PORT, {
+        method:'POST', credentials:'same-origin',
+        headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+        body:new URLSearchParams(values)
+    });
+    const json = await response.json();
+    if (!response.ok || !json.success) throw new Error(json.message || 'Permintaan gagal.');
+    return json;
+}
+
+async function loadOdps() {
+    hideNotice();
+    const select = document.getElementById('odpSelect');
+    select.innerHTML = '<option value="">Memuat data ODP...</option>';
+    try {
+        odps = await apiGet({action:'odps'});
+        if (!odps.length) {
+            select.innerHTML = '<option value="">Belum ada data ODP</option>';
+            showEmpty('Belum ada ODP', 'Tambahkan data ODP terlebih dahulu melalui menu Data ODP.');
+            document.getElementById('loadPortsBtn').disabled = true;
+            return;
+        }
+        select.innerHTML = '<option value="">— Pilih ODP —</option>' + odps.map(o => `<option value="${o.id}">${escapeHtml(o.kode_odp)} — ${escapeHtml(o.nama_odp)} (${o.kapasitas_port} port)</option>`).join('');
+        document.getElementById('loadPortsBtn').disabled = false;
+        if (currentOdp && odps.some(o => o.id === currentOdp.id)) {
+            select.value = String(currentOdp.id);
+            await loadSelectedOdp();
+        } else {
+            showEmpty('Pilih ODP untuk melihat port', 'Daftar ODP akan diambil dari database. Pelanggan yang tersedia berasal dari menu Pemasangan.');
+        }
+    } catch (error) {
+        select.innerHTML = '<option value="">Gagal memuat data ODP</option>';
+        showNotice(error.message + ' Pastikan sudah login dan tabel odp/odp_port tersedia.');
+    }
+}
+function showEmpty(title, description) {
+    document.getElementById('emptyTitle').textContent = title;
+    document.getElementById('emptyText').textContent = description;
+    document.getElementById('emptyState').classList.remove('hidden');
+    document.getElementById('portsSection').classList.add('hidden');
+    document.getElementById('summary').classList.add('hidden');
+}
+
+async function loadSelectedOdp() {
+    hideNotice();
+    const odpId = Number(document.getElementById('odpSelect').value);
+    if (!odpId) {
+        currentOdp = null;
+        showEmpty('Pilih ODP untuk melihat port', 'Pilih salah satu ODP dari daftar di atas.');
+        return;
+    }
+    currentOdp = odps.find(o => o.id === odpId);
+    if (!currentOdp) return;
+    const button = document.getElementById('loadPortsBtn');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memuat...';
+    try {
+        await apiPost({action:'ensure_ports', odp_id:odpId});
+        const results = await Promise.all([
+            apiGet({action:'ports', odp_id:odpId}),
+            apiGet({action:'pemasangan'})
+        ]);
+        ports = results[0];
+        installations = results[1];
+        renderPorts();
+    } catch (error) {
+        showNotice(error.message);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-list-check mr-2"></i>Tampilkan Port';
+    }
+}
+
+function renderPorts() {
+    if (!currentOdp) return;
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('portsSection').classList.remove('hidden');
+    document.getElementById('summary').classList.remove('hidden');
+    document.getElementById('summary').classList.add('grid');
+    document.getElementById('selectedOdpTitle').textContent = `${currentOdp.kode_odp} — ${currentOdp.nama_odp}`;
+    document.getElementById('summaryCapacity').textContent = `${currentOdp.kapasitas_port} port`;
+    const used = ports.filter(p => p.pemasangan_id !== null).length;
+    document.getElementById('summaryUsed').textContent = `${used} port`;
+    document.getElementById('summaryFree').textContent = `${Math.max(0, Number(currentOdp.kapasitas_port) - used)} port`;
+
+    const grid = document.getElementById('portsGrid');
+    if (!ports.length) {
+        grid.innerHTML = '<div class="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">Belum ada catatan port. Periksa kapasitas ODP dan coba muat ulang.</div>';
+        return;
+    }
+    grid.innerHTML = ports.map(port => {
+        const occupied = port.pemasangan_id !== null;
+        const options = installations.filter(c => c.assigned_port_id === null || c.assigned_port_id === port.id).map(c => {
+            const packageName = c.langganan ? ` — ${c.langganan}` : '';
+            const label = `${c.pelanggan_nama}${packageName}${c.serial_numbers ? ' | SN: ' + c.serial_numbers : ''}`;
+            return `<option value="${c.id}" ${Number(c.id) === Number(port.pemasangan_id) ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+        }).join('');
+        const border = occupied ? 'border-blue-200' : (port.status === 'Aktif' ? 'border-emerald-200' : 'border-amber-200');
+        const badge = occupied ? '<span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">Terpakai</span>' : (port.status === 'Aktif' ? '<span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Kosong</span>' : '<span class="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">Periksa status</span>');
+        const customerDetails = occupied ? `<div class="mt-3 rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600"><p><i class="fas fa-location-dot mr-1"></i>${escapeHtml(port.alamat || 'Alamat tidak tersedia')}</p><p><i class="fas fa-calendar mr-1"></i>${escapeHtml(port.tanggal_pasang || '')}</p>${port.serial_numbers ? `<p class="break-words"><i class="fas fa-barcode mr-1"></i>${escapeHtml(port.serial_numbers)}</p>` : ''}</div>` : '';
+        return `<article class="rounded-2xl border ${border} bg-white p-5 shadow-sm" data-port-id="${port.id}">
+            <div class="mb-4 flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wider text-slate-400">Port</p><h3 class="mt-1 text-xl font-black">Port ${port.nomor_port}</h3></div>${badge}</div>
+            <label class="mb-1.5 block text-xs font-bold text-slate-600" for="customer-${port.id}">Pelanggan / pemasangan</label>
+            <select id="customer-${port.id}" class="customer-select w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500"><option value="">— Kosong / lepaskan pelanggan —</option>${options}</select>
+            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div><label for="status-${port.id}" class="mb-1.5 block text-xs font-bold text-slate-600">Status port</label><select id="status-${port.id}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="Aktif" ${port.status === 'Aktif' ? 'selected' : ''}>Aktif</option><option value="Rusak" ${port.status === 'Rusak' ? 'selected' : ''}>Rusak</option><option value="Nonaktif" ${port.status === 'Nonaktif' ? 'selected' : ''}>Nonaktif</option></select></div>
+                <div><label for="note-${port.id}" class="mb-1.5 block text-xs font-bold text-slate-600">Catatan</label><input id="note-${port.id}" maxlength="255" value="${escapeHtml(port.catatan || '')}" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="Opsional"></div>
+            </div>
+            ${customerDetails}
+            <button type="button" data-save-port="${port.id}" class="mt-4 w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"><i class="fas fa-floppy-disk mr-2"></i>Simpan Port ${port.nomor_port}</button>
+        </article>`;
+    }).join('');
+    grid.querySelectorAll('[data-save-port]').forEach(button => button.addEventListener('click', () => savePort(Number(button.dataset.savePort), button)));
+}
+
+async function savePort(portId, button) {
+    hideNotice();
+    const customerValue = document.getElementById(`customer-${portId}`).value;
+    const status = document.getElementById(`status-${portId}`).value;
+    const catatan = document.getElementById(`note-${portId}`).value;
+    button.disabled = true;
+    const original = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
+    try {
+        const result = await apiPost({action:'save_port', port_id:portId, pemasangan_id:customerValue, status, catatan});
+        await loadSelectedOdp();
+        showNotice(result.message, 'success');
+    } catch (error) {
+        showNotice(error.message);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = original;
+    }
+}
+
+document.getElementById('loadPortsBtn').addEventListener('click', loadSelectedOdp);
+document.getElementById('odpSelect').addEventListener('change', () => {
+    currentOdp = null;
+    showEmpty('Tekan Tampilkan Port', 'Pilih ODP, lalu tekan tombol Tampilkan Port untuk memuat port dan pelanggan.');
+});
+document.getElementById('refreshBtn').addEventListener('click', loadOdps);
+
+fetch('sidebar.html?v=sidebar-clean-20261017')
+    .then(response => { if (!response.ok) throw new Error('Sidebar tidak ditemukan'); return response.text(); })
+    .then(html => {
+        document.getElementById('sidebar-target').innerHTML = html;
+        const currentPath = window.location.pathname.split('/').pop();
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.getAttribute('href') === currentPath) {
+                link.classList.add('bg-white/20', 'text-white', 'shadow-lg', 'font-bold');
+                const icon = link.querySelector('i');
+                if (icon) { icon.classList.remove('text-white/40'); icon.classList.add('text-white'); }
+            }
+        });
+        fetch('cek_session.php', {credentials:'same-origin'})
+            .then(response => response.json())
+            .then(session => {
+                if (session.logged_in) {
+                    const name = document.getElementById('sidebarUserName');
+                    const role = document.getElementById('sidebarUserRole');
+                    if (name) name.textContent = session.nama || 'Pengguna';
+                    if (role) role.textContent = session.role === 'superadmin' ? 'Superadmin' : 'Teknisi';
+                }
+            }).catch(() => {});
+    }).catch(error => console.error('Gagal memuat sidebar:', error));
+
+loadOdps();
+</script>
+</body>
+</html>

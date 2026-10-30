@@ -1,0 +1,79 @@
+<style id="sidebar-scrollbar-fix">
+  #mainSidebar .sidebar-nav-scroll { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+  #mainSidebar .sidebar-nav-scroll::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+</style>
+<div class="md:hidden fixed top-0 left-0 w-full bg-blue-600 text-white z-40 px-4 py-3 flex items-center shadow-md">
+    <button onclick="document.getElementById('mainSidebar').classList.remove('-translate-x-full'); document.getElementById('sidebarOverlay').classList.remove('hidden', 'opacity-0'); document.body.style.overflow='hidden';" 
+            class="text-white focus:outline-none p-2 -ml-2 rounded-xl hover:bg-white/20 transition-all active:scale-95">
+        <i class="fas fa-bars text-xl"></i>
+    </button>
+    
+    <div class="ml-3 flex items-center gap-2.5">
+        <img src="ikonek.png" alt="Logo" class="h-7 w-auto rounded bg-white p-1 shadow-sm">
+        <span class="font-black text-xl tracking-widest uppercase mt-0.5">iKONEK</span>
+    </div>
+</div>
+
+<div id="sidebarOverlay" 
+     onclick="document.getElementById('mainSidebar').classList.add('-translate-x-full'); this.classList.add('opacity-0', 'hidden'); document.body.style.overflow='';" 
+     class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden opacity-0 transition-opacity duration-300 md:hidden">
+</div>
+
+<aside id="mainSidebar" class="fixed top-0 left-0 w-72 md:w-64 h-full bg-blue-600 text-white flex flex-col z-50 transition-transform duration-300 transform -translate-x-full md:translate-x-0 shadow-2xl md:shadow-none">
+    
+    <button onclick="document.getElementById('mainSidebar').classList.add('-translate-x-full'); document.getElementById('sidebarOverlay').classList.add('opacity-0', 'hidden'); document.body.style.overflow='';" 
+            class="md:hidden text-white/60 hover:text-white bg-white/10 hover:bg-red-500 p-2 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 absolute right-4 top-4 z-50">
+        <i class="fas fa-times text-lg"></i>
+    </button>
+
+    <div class="px-6 py-6 border-b border-white/10 md:mt-0 mt-8">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white shadow-inner shrink-0">
+                <i class="fas fa-user-astronaut text-lg"></i>
+            </div>
+            <div class="overflow-hidden">
+                <p id="sidebarUserName" class="text-white font-bold text-sm uppercase truncate">Memuat...</p>
+                <p id="sidebarUserRole" class="text-[10px] uppercase tracking-widest font-bold mt-0.5 text-white/70"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-6 py-6 hidden md:block">
+        <img src="ikonek.png" alt="Logo iKonek" class="w-full max-w-[160px] mx-auto h-auto rounded-xl shadow-lg bg-white p-2">
+    </div>
+
+    <nav class="sidebar-nav-scroll min-h-0 flex-1 overflow-y-auto px-4 space-y-2 pb-4 md:mt-0 mt-4" style="scrollbar-width:none; -ms-overflow-style:none;">
+        <a href="dashboard.html" class="nav-link flex items-center gap-4 px-4 py-3.5 rounded-xl text-white/70 hover:text-white transition-all font-bold">
+            <i class="fas fa-border-all w-6 text-center text-lg text-white/40 group-hover:text-white transition-colors"></i> Dashboard
+        </a>
+        <a href="data-barang.html" class="nav-link flex items-center gap-4 px-4 py-3.5 rounded-xl text-white/70 hover:text-white transition-all font-bold">
+            <i class="fas fa-boxes w-6 text-center text-lg text-white/40 group-hover:text-white transition-colors"></i> Data Barang
+        </a>
+        <a href="pemasangan.html" class="nav-link flex items-center gap-4 px-4 py-3.5 rounded-xl text-white/70 hover:text-white transition-all font-bold">
+            <i class="fas fa-tools w-6 text-center text-lg text-white/40 group-hover:text-white transition-colors"></i> Pemasangan
+        </a>
+
+        <div class="px-4 pt-5 pb-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
+            Manajemen Jaringan
+        </div>
+        <a href="peta-jaringan.html" class="nav-link flex items-center gap-4 px-4 py-3.5 rounded-xl text-white/70 hover:text-white transition-all font-bold">
+            <i class="fas fa-map-marked-alt w-6 text-center text-lg text-white/40 group-hover:text-white transition-colors"></i> Peta Jaringan
+        </a>
+        <a href="data-odp.html" class="nav-link flex items-center gap-4 px-4 py-3.5 rounded-xl text-white/70 hover:text-white transition-all font-bold">
+            <i class="fas fa-network-wired w-6 text-center text-lg text-white/40 group-hover:text-white transition-colors"></i> Data ODP
+        </a>
+        <a href="port-pelanggan.html" class="nav-link flex items-center gap-4 px-4 py-3.5 rounded-xl text-white/70 hover:text-white transition-all font-bold">
+            <i class="fas fa-ethernet w-6 text-center text-lg text-white/40 group-hover:text-white transition-colors"></i> Port &amp; Pelanggan
+        </a>
+<a href="laporan.html" class="nav-link flex items-center gap-4 px-4 py-3.5 rounded-xl text-white/70 hover:text-white transition-all font-bold">
+            <i class="fas fa-chart-line w-6 text-center text-lg text-white/40 group-hover:text-white transition-colors"></i> Laporan
+        </a>
+    </nav>
+
+    <div class="pt-5 border-t border-white/10">
+        <a href="index.html" class="flex items-center gap-3.5 px-5 py-3 rounded-xl text-red-100 bg-red-500/20 hover:bg-red-500/40 transition-all">
+            <i class="fas fa-sign-out-alt w-5"></i>
+            <span class="font-bold text-sm">Logout</span>
+        </a>
+    </div>
+</aside>

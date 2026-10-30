@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+
+database/*.sql
+
+uploads/*
+!uploads/.gitkeep
+
+.git/
+.DS_Store
+Thumbs.db

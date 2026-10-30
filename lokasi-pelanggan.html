@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <style id="sidebar-scrollbar-fix">
+      #mainSidebar .sidebar-nav-scroll { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+      #mainSidebar .sidebar-nav-scroll::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+    </style>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lokasi Pelanggan - CV Media Computindo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="responsive.css?v=20261015">
+</head>
+<body class="min-h-screen bg-slate-50">
+<div id="sidebar-target"></div>
+<main class="w-full p-4 pt-24 md:ml-64 md:p-10 md:pt-10">
+    <header class="mb-7 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+            <div class="mb-3 flex items-center gap-2 text-sm text-slate-400"><a href="dashboard.html" class="hover:text-blue-600">Dashboard</a><i class="fas fa-chevron-right text-[10px]"></i><span class="font-semibold text-slate-600">Lokasi Pelanggan</span></div>
+            <h1 class="flex items-center gap-3 text-2xl font-black text-slate-800 md:text-3xl"><i class="fas fa-house-location-dot text-blue-600"></i> Lokasi Pelanggan</h1>
+            <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">Kelola titik rumah pelanggan untuk ditampilkan bersama ODP pada Peta Jaringan. Alamat teks saja belum cukup untuk menentukan titik yang akurat.</p>
+        </div>
+        <a href="peta-jaringan.html" class="inline-flex w-fit items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700"><i class="fas fa-map-marked-alt"></i> Kembali ke Peta Jaringan</a>
+    </header>
+
+    <div id="alertBox" class="mb-5 hidden rounded-xl border px-4 py-3 text-sm" role="alert"></div>
+    <section class="mb-6 grid gap-4 sm:grid-cols-3">
+        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><p class="text-sm font-semibold text-slate-500">Total Pelanggan</p><p id="totalCustomers" class="mt-2 text-3xl font-black text-slate-800">—</p></div>
+        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><p class="text-sm font-semibold text-slate-500">Lokasi Siap Dipetakan</p><p id="mappedCustomers" class="mt-2 text-3xl font-black text-emerald-600">—</p></div>
+        <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><p class="text-sm font-semibold text-slate-500">Belum Ada Koordinat</p><p id="missingCustomers" class="mt-2 text-3xl font-black text-amber-600">—</p></div>
+    </section>
+
+    <section class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
+        <h2 class="font-extrabold"><i class="fas fa-circle-info mr-2"></i>Cara menentukan titik rumah</h2>
+        <ol class="mt-2 list-decimal space-y-1 pl-5">
+            <li>Di HP, buka Google Maps lalu pilih titik rumah pelanggan yang tepat. Tekan <b>Bagikan</b> → <b>Salin link</b>.</li>
+            <li>Tempel link pada kolom <b>Link Google Maps</b>, lalu tekan <b>Simpan Link &amp; Ambil Lokasi</b>. Sistem akan mencoba membaca lokasi link secara otomatis.</li>
+            <li>Kembali ke halaman ini, tempelkan koordinat dengan format <code>-7.4200000, 109.2500000</code>, lalu klik <b>Simpan Lokasi</b>.</li>
+        </ol>
+        <p class="mt-2">Tautan pendek seperti <code>maps.app.goo.gl</code> diproses oleh server PHP/XAMPP. Pastikan PHP cURL aktif dan laptop memiliki koneksi internet. Jika Google tidak menyertakan titik yang tepat di link, halaman akan memberi pesan dan tidak menebak lokasi.</p>
+    </section>
+
+    <section class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:p-6">
+        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div><h2 class="font-black text-slate-800">Daftar pelanggan</h2><p class="mt-1 text-sm text-slate-500">Perubahan koordinat disimpan ke database pemasangan pelanggan yang sudah ada.</p></div>
+            <div class="flex gap-2"><input id="searchCustomer" type="search" placeholder="Cari nama atau alamat..." class="min-w-0 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"><button id="refreshBtn" type="button" class="rounded-xl border border-slate-200 px-3 py-2.5 text-slate-700 hover:bg-slate-50" title="Muat ulang"><i class="fas fa-rotate"></i></button></div>
+        </div>
+        <div id="customerList" class="space-y-4"><div class="rounded-xl bg-slate-50 p-4 text-sm text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat data pelanggan...</div></div>
+    </section>
+</main>
+<script>
+const API = 'api_lokasi_pelanggan.php';
+let customers = [];
+function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+function validCoords(row) { const lat=Number(row.latitude), lng=Number(row.longitude); return row.latitude !== null && row.latitude !== '' && row.longitude !== null && row.longitude !== '' && Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180; }
+function parseCoordinates(value) {
+    const raw = String(value ?? '').trim(); if (!raw) return null;
+    const decoded = raw.replace(/%2C/ig, ',').replace(/%20/ig, ' ');
+    const lat = '(-?\\d{1,2}(?:\\.\\d+)?)', lng = '(-?\\d{1,3}(?:\\.\\d+)?)';
+    const patterns = [new RegExp('^\\s*'+lat+'\\s*[,;]\\s*'+lng+'\\s*$'),new RegExp('@'+lat+'\\s*,\\s*'+lng),new RegExp('!3d'+lat+'!4d'+lng,'i'),new RegExp('!2d'+lng+'!3d'+lat,'i')];
+    for (let i=0;i<patterns.length;i++) { const m=decoded.match(patterns[i]); if(!m) continue; const latitude=Number(i===3?m[2]:m[1]), longitude=Number(i===3?m[1]:m[2]); if(Number.isFinite(latitude)&&Number.isFinite(longitude)&&latitude>=-90&&latitude<=90&&longitude>=-180&&longitude<=180) return {latitude,longitude}; }
+    try { const u=new URL(raw); for (const key of ['q','query','ll','center','destination']) { const q=u.searchParams.get(key); const m=q&&q.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/); if(m) { const latitude=Number(m[1]),longitude=Number(m[2]); if(latitude>=-90&&latitude<=90&&longitude>=-180&&longitude<=180) return {latitude,longitude}; } } } catch (_) {}
+    return null;
+}
+function mapsSearchUrl(address) { return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(address || ''); }
+function showAlert(message, type='error') { const box=document.getElementById('alertBox'); box.textContent=message; box.className='mb-5 rounded-xl border px-4 py-3 text-sm '+(type==='success'?'border-emerald-200 bg-emerald-50 text-emerald-800':'border-rose-200 bg-rose-50 text-rose-800'); box.classList.remove('hidden'); }
+function hideAlert() { document.getElementById('alertBox').classList.add('hidden'); }
+function renderCustomers() {
+    const query=document.getElementById('searchCustomer').value.trim().toLowerCase();
+    const rows=customers.filter(c=>[c.pelanggan_nama,c.alamat,c.langganan,c.assigned_kode_odp].some(v=>String(v??'').toLowerCase().includes(query)));
+    const container=document.getElementById('customerList');
+    if (!rows.length) { container.innerHTML='<div class="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Tidak ada pelanggan yang cocok.</div>'; return; }
+    container.innerHTML=rows.map(c=>{
+        const mapped=validCoords(c); const coordinateText=mapped?`${Number(c.latitude).toFixed(7)}, ${Number(c.longitude).toFixed(7)}`:'';
+        const sourceLabel=c.koordinat_sumber==='database'?'Koordinat tersimpan':(c.koordinat_sumber==='link_maps'?'Koordinat terdeteksi dari link Maps':'Belum ada koordinat');
+        const sourceClass=mapped?'text-emerald-700':'text-amber-700';
+        const savedLink=String(c.link_maps||'').trim(); const safeLink=/^https?:\/\//i.test(savedLink)?savedLink:'';
+        const connection=c.assigned_kode_odp?`${escapeHtml(c.assigned_kode_odp)} · Port ${Number(c.assigned_nomor_port||0)}`:'Belum dihubungkan ke ODP/port';
+        return `<article class="rounded-2xl border border-slate-200 p-4 md:p-5" data-customer-card="${Number(c.id)}">
+          <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div class="min-w-0"><h3 class="break-words font-extrabold text-slate-800">${escapeHtml(c.pelanggan_nama)}</h3><p class="mt-1 break-words text-sm leading-5 text-slate-600">${escapeHtml(c.alamat||'Alamat belum dicatat')}</p><p class="mt-1 text-xs text-slate-500">${escapeHtml(c.langganan||'Paket belum dicatat')} · ${escapeHtml(connection)}</p></div>
+            <span class="inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-bold ${mapped?'bg-emerald-50 text-emerald-700':'bg-amber-50 text-amber-800'}">${mapped?'Lokasi tersedia':'Belum dipetakan'}</span>
+          </div>
+          <div class="mt-4 space-y-3">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <div><label for="maps-link-${Number(c.id)}" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Link Google Maps</label><input id="maps-link-${Number(c.id)}" data-maps-link-input="${Number(c.id)}" value="${escapeHtml(savedLink)}" type="url" maxlength="1000" placeholder="Tempel link Bagikan dari Google Maps" class="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"><p class="mt-1 text-xs text-slate-500">Dari HP: pilih titik rumah di Google Maps → Bagikan → Salin link. Tempel di sini; sistem mencoba mengambil koordinat otomatis.</p></div>
+              <button type="button" data-save-link="${Number(c.id)}" class="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700"><i class="fas fa-map-pin mr-1"></i> Simpan Link & Ambil Lokasi</button>
+            </div>
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <div><label for="coord-${Number(c.id)}" class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Alternatif: koordinat manual</label><input id="coord-${Number(c.id)}" data-coordinate-input="${Number(c.id)}" value="${escapeHtml(coordinateText)}" type="text" placeholder="-7.4200000, 109.2500000" class="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"><p class="mt-1 text-xs ${sourceClass}">${sourceLabel}</p></div>
+              <button type="button" data-save-location="${Number(c.id)}" class="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"><i class="fas fa-floppy-disk mr-1"></i> Simpan Koordinat</button>
+            </div>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2"><button type="button" data-search-address="${Number(c.id)}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><i class="fas fa-magnifying-glass-location mr-1"></i> Cari alamat di Google Maps</button>${safeLink?`<a href="${escapeHtml(safeLink)}" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><i class="fas fa-arrow-up-right-from-square mr-1"></i> Buka link tersimpan</a>`:''}</div>
+        </article>`;
+    }).join('');
+    container.querySelectorAll('[data-save-location]').forEach(button=>button.addEventListener('click',()=>saveLocation(Number(button.dataset.saveLocation),button)));
+    container.querySelectorAll('[data-save-link]').forEach(button=>button.addEventListener('click',()=>saveMapsLink(Number(button.dataset.saveLink),button)));
+    container.querySelectorAll('[data-search-address]').forEach(button=>button.addEventListener('click',()=>{const c=customers.find(x=>Number(x.id)===Number(button.dataset.searchAddress));if(!c)return;if(!String(c.alamat||'').trim()){showAlert('Pelanggan ini belum memiliki alamat. Lengkapi alamatnya terlebih dahulu di data Pemasangan.');return;}window.open(mapsSearchUrl(c.alamat),'_blank','noopener,noreferrer');}));
+}
+async function loadCustomers() {
+    hideAlert(); const button=document.getElementById('refreshBtn'); button.disabled=true; button.innerHTML='<i class="fas fa-spinner fa-spin"></i>';
+    try { const response=await fetch(`${API}?action=list`,{credentials:'same-origin',cache:'no-store'}); const result=await response.json(); if(!response.ok||!result.success) throw new Error(result.message||'Data pelanggan gagal dimuat.'); customers=Array.isArray(result.data)?result.data:[]; document.getElementById('totalCustomers').textContent=customers.length; document.getElementById('mappedCustomers').textContent=customers.filter(validCoords).length; document.getElementById('missingCustomers').textContent=customers.length-customers.filter(validCoords).length; renderCustomers(); }
+    catch(error) { showAlert(error.message+' Pastikan sudah login, file SQL sudah dijalankan, dan api_lokasi_pelanggan.php satu folder dengan koneksi.php.'); document.getElementById('customerList').innerHTML='<div class="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">Data pelanggan gagal dimuat. Lihat pesan di atas.</div>'; }
+    finally { button.disabled=false; button.innerHTML='<i class="fas fa-rotate"></i>'; }
+}
+async function saveMapsLink(id,button) {
+    const input=document.getElementById(`maps-link-${id}`); const link=input?input.value.trim():'';
+    if(!link){showAlert('Tempel link Bagikan dari Google Maps terlebih dahulu.');if(input)input.focus();return;}
+    const old=button.innerHTML; button.disabled=true; button.innerHTML='<i class="fas fa-spinner fa-spin mr-1"></i> Membaca link...';
+    try {
+        const body=new URLSearchParams({action:'save_link',id:String(id),link_maps:link});
+        const response=await fetch(API,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body});
+        const result=await response.json(); if(!response.ok||!result.success)throw new Error(result.message||'Link Maps gagal diproses.');
+        showAlert(result.message||'Link dan koordinat berhasil disimpan.','success'); await loadCustomers();
+    } catch(error){showAlert(error.message);} finally {button.disabled=false;button.innerHTML=old;}
+}
+async function saveLocation(id,button) {
+    const input=document.getElementById(`coord-${id}`); const text=input?input.value.trim():''; const coords=parseCoordinates(text);
+    if(!coords){showAlert('Koordinat belum valid. Tempelkan format latitude, longitude, misalnya -7.4200000, 109.2500000.');if(input)input.focus();return;}
+    const old=button.innerHTML; button.disabled=true; button.innerHTML='<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...';
+    try { const body=new URLSearchParams({action:'save',id:String(id),latitude:coords.latitude.toFixed(7),longitude:coords.longitude.toFixed(7)}); const response=await fetch(API,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body}); const result=await response.json(); if(!response.ok||!result.success)throw new Error(result.message||'Lokasi gagal disimpan.'); showAlert(result.message||'Lokasi berhasil disimpan.','success'); await loadCustomers(); }
+    catch(error){showAlert(error.message);} finally {button.disabled=false;button.innerHTML=old;}
+}
+document.getElementById('searchCustomer').addEventListener('input',renderCustomers);
+document.getElementById('refreshBtn').addEventListener('click',loadCustomers);
+fetch('sidebar.html?v=sidebar-clean-20261017').then(r=>{if(!r.ok)throw new Error('Sidebar tidak ditemukan');return r.text();}).then(html=>{document.getElementById('sidebar-target').innerHTML=html;const path=window.location.pathname.split('/').pop();document.querySelectorAll('.nav-link').forEach(link=>{if(link.getAttribute('href')===path){link.classList.add('bg-white/20','text-white','shadow-lg','font-bold');const icon=link.querySelector('i');if(icon){icon.classList.remove('text-white/40');icon.classList.add('text-white');}}});fetch('cek_session.php',{credentials:'same-origin'}).then(r=>r.json()).then(s=>{if(s.logged_in){const n=document.getElementById('sidebarUserName'),role=document.getElementById('sidebarUserRole');if(n)n.textContent=s.nama||'Pengguna';if(role)role.textContent=s.role==='superadmin'?'Superadmin':'Teknisi';}}).catch(()=>{});}).catch(e=>console.error('Gagal memuat sidebar:',e));
+loadCustomers();
+</script>
+</body>
+</html>

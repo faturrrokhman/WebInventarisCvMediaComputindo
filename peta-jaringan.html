@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <style id="sidebar-scrollbar-fix">
+      #mainSidebar .sidebar-nav-scroll { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+      #mainSidebar .sidebar-nav-scroll::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+    </style>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Jaringan - CV Media Computindo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        #networkMap { min-height: 440px; height: 62vh; z-index: 1; background: #e8eef2; }
+        #networkMap.leaflet-container { background: #e8eef2 !important; }
+        .leaflet-popup-content-wrapper { border-radius: 12px; }
+        .leaflet-popup-content { margin: 12px 14px; }
+        .map-popup-title { font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 3px; }
+        .map-popup-muted { color: #64748b; font-size: 12px; line-height: 1.45; }
+        .map-popup-action { display: inline-block; margin-top: 9px; padding: 7px 10px; border-radius: 8px; background: #2563eb; color: white !important; text-decoration: none; font-size: 12px; font-weight: 700; }
+        .customer-marker-wrap { background: transparent; border: 0; }
+        .customer-marker { display: flex; width: 30px; height: 30px; align-items: center; justify-content: center; color: #fff; background: #2563eb; border: 2px solid #fff; border-radius: 9px 9px 9px 2px; box-shadow: 0 2px 8px rgba(15,23,42,.35); transform: rotate(-4deg); }
+        .customer-marker i { transform: rotate(4deg); font-size: 13px; }
+        .search-filter { border-color: #e2e8f0; background: #fff; color: #475569; }
+        .search-filter.is-active { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+    </style>
+    <link rel="stylesheet" href="responsive.css?v=20261015">
+</head>
+<body class="min-h-screen bg-slate-50">
+    <div id="sidebar-target"></div>
+
+    <main class="w-full p-4 pt-24 md:ml-64 md:p-10 md:pt-10">
+        <header class="mb-7">
+            <div class="mb-3 flex items-center gap-2 text-sm text-slate-400">
+                <a href="dashboard.html" class="hover:text-blue-600">Dashboard</a>
+                <i class="fas fa-chevron-right text-[10px]"></i>
+                <span class="font-semibold text-slate-600">Peta Jaringan</span>
+            </div>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 class="flex items-center gap-3 text-2xl font-black text-slate-800 md:text-3xl"><i class="fas fa-map-marked-alt text-blue-600"></i>Peta Jaringan</h1>
+                    <p class="mt-2 text-slate-500">Peta sebaran ODP, rumah pelanggan, dan garis koneksi logis berdasarkan hubungan ODP/port yang tersimpan.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a href="lokasi-pelanggan.html" class="inline-flex w-fit items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700"><i class="fas fa-house-location-dot"></i> Kelola Lokasi Pelanggan</a>
+                    <button id="refreshBtn" type="button" class="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"><i class="fas fa-rotate"></i> Muat Ulang Data</button>
+                </div>
+            </div>
+        </header>
+
+        <div id="alertBox" class="mb-5 hidden rounded-xl border px-4 py-3 text-sm" role="alert"></div>
+
+        <section class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+            <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div class="flex items-center justify-between"><span class="text-sm font-semibold text-slate-500">Total ODP</span><i class="fas fa-network-wired text-xl text-blue-500"></i></div><p id="statTotal" class="mt-3 text-3xl font-black text-slate-800">—</p></div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div class="flex items-center justify-between"><span class="text-sm font-semibold text-slate-500">ODP di Peta</span><i class="fas fa-location-dot text-xl text-emerald-500"></i></div><p id="statMapped" class="mt-3 text-3xl font-black text-slate-800">—</p></div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div class="flex items-center justify-between"><span class="text-sm font-semibold text-slate-500">Rumah di Peta</span><i class="fas fa-house text-xl text-indigo-500"></i></div><p id="statCustomersMapped" class="mt-3 text-3xl font-black text-slate-800">—</p></div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div class="flex items-center justify-between"><span class="text-sm font-semibold text-slate-500">Rumah Belum Dipetakan</span><i class="fas fa-map-pin text-xl text-amber-500"></i></div><p id="statCustomersMissing" class="mt-3 text-3xl font-black text-slate-800">—</p></div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div class="flex items-center justify-between"><span class="text-sm font-semibold text-slate-500">Port Terpakai</span><i class="fas fa-ethernet text-xl text-rose-500"></i></div><p id="statPorts" class="mt-3 text-3xl font-black text-slate-800">—</p><p id="statPortCapacity" class="mt-1 text-xs text-slate-500">Dari — slot kapasitas</p></div>
+            <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div class="flex items-center justify-between"><span class="text-sm font-semibold text-slate-500">Port Kosong</span><i class="fas fa-plug-circle-check text-xl text-emerald-500"></i></div><p id="statFreePorts" class="mt-3 text-3xl font-black text-slate-800">—</p><p id="statFreeDescription" class="mt-1 text-xs text-slate-500">Slot belum terhubung ke pelanggan</p></div>
+        </section>
+
+        <section class="mb-6 grid gap-6 2xl:grid-cols-3">
+            <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm 2xl:col-span-2">
+                <div class="flex flex-col gap-2 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="font-black text-slate-800">Peta ODP dan Rumah Pelanggan</h2>
+                        <p class="mt-1 text-sm text-slate-500">Marker menunjukkan lokasi sebenarnya; garis putus-putus menunjukkan hubungan logis ODP ke pelanggan, bukan jalur fisik kabel.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3 text-xs font-semibold text-slate-500">
+                        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Aktif</span>
+                        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>Maintenance</span>
+                        <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-slate-500"></span>Nonaktif</span>
+                        <span class="inline-flex items-center gap-1.5"><i class="fas fa-house text-blue-600"></i> Rumah pelanggan</span>
+                        <span class="inline-flex items-center gap-1.5"><span style="display:inline-block;width:22px;border-top:3px dashed #0f766e"></span> Koneksi logis</span>
+                    </div>
+                </div>
+                <div id="networkMap" aria-label="Peta lokasi ODP"></div>
+                <div id="tileStatus" class="hidden border-t border-amber-200 bg-amber-50 px-5 py-2 text-xs leading-5 text-amber-800" role="status"></div>
+                <div id="mapHint" class="border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs leading-5 text-slate-500">Memuat marker ODP dan pelanggan...</div>
+            </div>
+
+            <aside class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                <div class="mb-4 flex flex-col gap-3">
+                    <div>
+                        <h2 class="font-black text-slate-800">Pencarian Jaringan</h2>
+                        <p class="mt-1 text-sm text-slate-500">Cari ODP atau pelanggan berdasarkan kode, nama, atau alamat.</p>
+                    </div>
+                    <label class="relative block">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input id="searchNetwork" type="search" autocomplete="off" placeholder="Nama pelanggan, alamat, kode ODP..." class="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                    </label>
+                    <div class="flex flex-wrap gap-2" role="group" aria-label="Filter hasil pencarian">
+                        <button type="button" data-search-kind="all" aria-pressed="true" class="search-filter is-active rounded-lg border px-3 py-2 text-xs font-bold">Semua</button>
+                        <button type="button" data-search-kind="odp" aria-pressed="false" class="search-filter rounded-lg border px-3 py-2 text-xs font-bold">ODP</button>
+                        <button type="button" data-search-kind="customer" aria-pressed="false" class="search-filter rounded-lg border px-3 py-2 text-xs font-bold">Pelanggan</button>
+                    </div>
+                    <p id="searchSummary" class="text-xs text-slate-500" aria-live="polite">Memuat data...</p>
+                </div>
+                <div id="networkSearchResults" class="max-h-[560px] space-y-3 overflow-y-auto pr-1">
+                    <div class="rounded-xl bg-slate-50 p-4 text-sm text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i>Memuat data jaringan...</div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
+            <h2 class="flex items-center gap-2 font-bold text-blue-900"><i class="fas fa-circle-info"></i> Catatan penggunaan</h2>
+            <p class="mt-2 text-sm leading-6 text-blue-900/80">ODP perlu koordinat pada Data ODP. Rumah pelanggan menggunakan koordinat yang tersimpan pada data Pemasangan atau yang dapat dibaca dari link Google Maps. Pelanggan yang hanya memiliki alamat akan tampil dalam daftar Lokasi Pelanggan sampai titik rumah ditentukan. Jangan memakai titik perkiraan; lokasi tepat harus diverifikasi. Garis putus-putus menunjukkan hubungan logis dari ODP ke rumah berdasarkan data Port & Pelanggan, bukan jalur fisik kabel. Peta dasar membutuhkan koneksi internet.</p>
+            <div class="mt-4 flex flex-wrap gap-2"><a href="data-odp.html" class="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-100"><i class="fas fa-network-wired"></i> Kelola ODP</a><a href="lokasi-pelanggan.html" class="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-100"><i class="fas fa-house-location-dot"></i> Lengkapi Lokasi Pelanggan</a></div>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+    const API_ODP = 'api_odp.php';
+    const API_CUSTOMERS = 'api_lokasi_pelanggan.php';
+    let odpRows = [];
+    let customerRows = [];
+    let searchKind = 'all';
+    const odpMarkersById = new Map();
+    const customerMarkersById = new Map();
+    const map = L.map('networkMap', { scrollWheelZoom: true }).setView([-7.4, 109.25], 12);
+
+    // Jika tile OpenStreetMap utama tidak dapat diunduh, coba penyedia peta alternatif.
+    // Semua penyedia tetap memerlukan koneksi internet.
+    const tileProviders = [
+        {
+            name: 'OpenStreetMap',
+            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+        },
+        {
+            name: 'CARTO',
+            url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            attribution: '&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
+        },
+        {
+            name: 'OpenStreetMap HOT',
+            url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+            attribution: '&copy; OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team'
+        }
+    ];
+    let activeTileLayer = null;
+    let activeTileProviderIndex = -1;
+    let activeTileErrors = 0;
+    let activeTileLoads = 0;
+    let tileFallbackStarted = false;
+    const tileStatus = document.getElementById('tileStatus');
+
+    function setTileStatus(message, visible = true) {
+        tileStatus.textContent = message;
+        tileStatus.classList.toggle('hidden', !visible);
+    }
+
+    function setTileProvider(index) {
+        if (index >= tileProviders.length) {
+            setTileStatus('Peta dasar tidak berhasil dimuat dari penyedia peta yang tersedia. Periksa koneksi internet, VPN, DNS, atau pemblokir konten; titik data mungkin tetap tersedia, tetapi jalan dan label peta tidak dapat ditampilkan.');
+            return;
+        }
+        if (activeTileLayer) map.removeLayer(activeTileLayer);
+        activeTileProviderIndex = index;
+        activeTileErrors = 0;
+        activeTileLoads = 0;
+        tileFallbackStarted = false;
+        const provider = tileProviders[index];
+        setTileStatus(index === 0 ? 'Memuat peta dasar...' : `Penyedia peta sebelumnya tidak merespons. Mencoba peta dasar ${provider.name}...`);
+        activeTileLayer = L.tileLayer(provider.url, {
+            maxZoom: 19,
+            attribution: provider.attribution,
+            crossOrigin: true,
+            updateWhenIdle: true,
+            keepBuffer: 2
+        });
+        activeTileLayer.on('tileload', () => {
+            activeTileLoads++;
+            if (activeTileLoads >= 1 && activeTileProviderIndex === index) {
+                setTileStatus(`Peta dasar dimuat menggunakan ${provider.name}.`, false);
+            }
+        });
+        activeTileLayer.on('tileerror', () => {
+            activeTileErrors++;
+            if (activeTileErrors >= 3 && activeTileLoads < 1 && !tileFallbackStarted && activeTileProviderIndex === index) {
+                tileFallbackStarted = true;
+                setTileStatus(`Tile ${provider.name} gagal dimuat; mencoba penyedia peta lain...`);
+                setTimeout(() => {
+                    if (activeTileProviderIndex === index && activeTileLoads < 1) setTileProvider(index + 1);
+                }, 250);
+            }
+        });
+        activeTileLayer.addTo(map);
+        setTimeout(() => {
+            if (activeTileProviderIndex === index && activeTileLoads < 1) {
+                setTileProvider(index + 1);
+            }
+        }, 6000);
+    }
+    setTileProvider(0);
+
+    // Layer koneksi dibuat di belakang marker agar garis tidak menutupi titik lokasi.
+    const connectionLayer = L.layerGroup().addTo(map);
+    const odpLayer = L.layerGroup().addTo(map);
+    const customerLayer = L.layerGroup().addTo(map);
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[character]));
+    }
+    function validCoords(row) {
+        if (row.latitude === null || row.latitude === '' || row.longitude === null || row.longitude === '') return false;
+        const lat = Number(row.latitude), lng = Number(row.longitude);
+        return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    }
+    function statusColor(status) {
+        if (status === 'Aktif') return '#10b981';
+        if (status === 'Maintenance') return '#f59e0b';
+        return '#64748b';
+    }
+    function showAlert(message, type = 'error') {
+        const box = document.getElementById('alertBox');
+        box.textContent = message;
+        box.className = 'mb-5 rounded-xl border px-4 py-3 text-sm ' + (type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800');
+        box.classList.remove('hidden');
+    }
+    function hideAlert() { document.getElementById('alertBox').classList.add('hidden'); }
+    function googleMapsUrl(customer) {
+        const url = String(customer.link_maps || '').trim();
+        if (/^https?:\/\//i.test(url)) return url;
+        if (customer.alamat) return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(customer.alamat);
+        return '';
+    }
+    function popupHtmlOdp(odp) {
+        const used = Number(odp.port_terpakai || 0);
+        const free = Math.max(0, Number(odp.kapasitas_port || 0) - used);
+        const location = odp.alamat ? `<div class="map-popup-muted">${escapeHtml(odp.alamat)}</div>` : '';
+        return `<div class="min-w-[180px]"><div class="map-popup-title">${escapeHtml(odp.kode_odp)} — ${escapeHtml(odp.nama_odp)}</div>${location}<div class="map-popup-muted" style="margin-top:6px">Status: <b>${escapeHtml(odp.status)}</b></div><div class="map-popup-muted">Port terpakai: <b>${used}/${Number(odp.kapasitas_port || 0)}</b> · Kosong: <b>${free}</b></div><a class="map-popup-action" href="port-pelanggan.html?odp_id=${Number(odp.id)}">Lihat Port &amp; Pelanggan</a></div>`;
+    }
+    function popupHtmlCustomer(customer) {
+        const packageName = customer.langganan ? `<div class="map-popup-muted">Paket: ${escapeHtml(customer.langganan)}</div>` : '';
+        const address = customer.alamat ? `<div class="map-popup-muted">${escapeHtml(customer.alamat)}</div>` : '';
+        const connection = customer.assigned_kode_odp
+            ? `<div class="map-popup-muted" style="margin-top:5px">Terhubung: <b>${escapeHtml(customer.assigned_kode_odp)} · Port ${Number(customer.assigned_nomor_port || 0)}</b></div>`
+            : '<div class="map-popup-muted" style="margin-top:5px">ODP/port belum dicatat</div>';
+        const url = googleMapsUrl(customer);
+        const mapsLink = url ? `<a class="map-popup-action" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Buka Google Maps</a>` : '';
+        return `<div class="min-w-[180px]"><div class="map-popup-title"><i class="fas fa-house text-blue-600"></i> ${escapeHtml(customer.pelanggan_nama)}</div>${address}${packageName}${connection}${mapsLink}</div>`;
+    }
+    function popupHtmlConnection(odp, customer) {
+        const port = customer.assigned_nomor_port ? `Port ${Number(customer.assigned_nomor_port)}` : 'Port belum dicatat';
+        return `<div class="min-w-[180px]"><div class="map-popup-title">Koneksi logis</div><div class="map-popup-muted">${escapeHtml(odp.kode_odp)} — ${escapeHtml(odp.nama_odp)}</div><div class="map-popup-muted" style="margin:5px 0">↓ ${escapeHtml(port)}</div><div class="map-popup-muted">${escapeHtml(customer.pelanggan_nama)}</div><div class="map-popup-muted" style="margin-top:5px">Garis ini menunjukkan hubungan data ODP/port ke pelanggan, bukan rute kabel fisik.</div></div>`;
+    }
+    function sameOdpCode(a, b) {
+        return String(a ?? '').trim().toLocaleLowerCase() === String(b ?? '').trim().toLocaleLowerCase();
+    }
+    function customerIcon() {
+        return L.divIcon({
+            className: 'customer-marker-wrap',
+            html: '<span class="customer-marker"><i class="fas fa-house"></i></span>',
+            iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -13]
+        });
+    }
+    function renderMap() {
+        connectionLayer.clearLayers();
+        odpLayer.clearLayers();
+        customerLayer.clearLayers();
+        odpMarkersById.clear();
+        customerMarkersById.clear();
+        const mappedOdps = odpRows.filter(validCoords);
+        const mappedCustomers = customerRows.filter(validCoords);
+
+        // Gambar garis hanya ketika relasi port pelanggan->ODP ada di database,
+        // dan koordinat kedua titik sudah valid.
+        const logicalConnections = [];
+        mappedCustomers.forEach(customer => {
+            if (!customer.assigned_kode_odp || !customer.assigned_nomor_port) return;
+            const odp = mappedOdps.find(item => sameOdpCode(item.kode_odp, customer.assigned_kode_odp));
+            if (!odp) return;
+            const line = L.polyline([
+                [Number(odp.latitude), Number(odp.longitude)],
+                [Number(customer.latitude), Number(customer.longitude)]
+            ], {
+                color: '#0f766e', weight: 3, opacity: 0.82, dashArray: '7 7',
+                lineCap: 'round', interactive: true
+            }).bindPopup(popupHtmlConnection(odp, customer));
+            line.bindTooltip(`${odp.kode_odp} → ${customer.pelanggan_nama} (Port ${Number(customer.assigned_nomor_port)})`, {sticky: true});
+            line.addTo(connectionLayer);
+            logicalConnections.push({ odp, customer });
+        });
+
+        mappedOdps.forEach(odp => {
+            const marker = L.circleMarker([Number(odp.latitude), Number(odp.longitude)], {
+                radius: 9, color: '#ffffff', weight: 3,
+                fillColor: statusColor(odp.status), fillOpacity: 0.95
+            }).bindPopup(popupHtmlOdp(odp))
+              .bindTooltip(`${odp.kode_odp} — ${odp.nama_odp}`, { direction: 'top', offset: [0, -7] })
+              .addTo(odpLayer);
+            odpMarkersById.set(String(odp.id), marker);
+        });
+        mappedCustomers.forEach(customer => {
+            const marker = L.marker([Number(customer.latitude), Number(customer.longitude)], { icon: customerIcon() })
+                .bindPopup(popupHtmlCustomer(customer))
+                .bindTooltip(customer.pelanggan_nama || 'Pelanggan', { direction: 'top', offset: [0, -10] })
+                .addTo(customerLayer);
+            customerMarkersById.set(String(customer.id), marker);
+        });
+        const allPoints = mappedOdps.map(x => [Number(x.latitude), Number(x.longitude)])
+            .concat(mappedCustomers.map(x => [Number(x.latitude), Number(x.longitude)]));
+        if (allPoints.length === 1) map.setView(allPoints[0], 16);
+        else if (allPoints.length > 1) map.fitBounds(L.latLngBounds(allPoints).pad(0.12), { maxZoom: 16 });
+        else map.setView([-7.4, 109.25], 12);
+
+        const missingOdp = odpRows.length - mappedOdps.length;
+        const missingCustomers = customerRows.length - mappedCustomers.length;
+        document.getElementById('statTotal').textContent = odpRows.length;
+        document.getElementById('statMapped').textContent = mappedOdps.length;
+        document.getElementById('statCustomersMapped').textContent = mappedCustomers.length;
+        document.getElementById('statCustomersMissing').textContent = missingCustomers;
+
+        // Statistik port dihitung dari kapasitas ODP dan relasi port-pelanggan yang dikembalikan API.
+        const totalPortCapacity = odpRows.reduce((total, odp) => total + Math.max(0, Number(odp.kapasitas_port || 0)), 0);
+        const totalPortsUsed = odpRows.reduce((total, odp) => total + Math.max(0, Number(odp.port_terpakai || 0)), 0);
+        const totalPortsFree = Math.max(0, totalPortCapacity - totalPortsUsed);
+        document.getElementById('statPorts').textContent = totalPortsUsed;
+        document.getElementById('statPortCapacity').textContent = `Dari ${totalPortCapacity} slot kapasitas`;
+        document.getElementById('statFreePorts').textContent = totalPortsFree;
+        document.getElementById('statFreeDescription').textContent = 'Slot belum terhubung; cek status sebelum dipakai';
+        const hints = [];
+        hints.push(`${mappedOdps.length} dari ${odpRows.length} ODP tampil di peta`);
+        hints.push(`${mappedCustomers.length} dari ${customerRows.length} rumah pelanggan tampil di peta`);
+        hints.push(`${logicalConnections.length} koneksi logis ODP–pelanggan ditampilkan`);
+        if (totalPortsUsed > totalPortCapacity) hints.push('Peringatan: port terpakai melebihi kapasitas total; periksa kembali kapasitas ODP dan data Port & Pelanggan');
+        const assignedNoLine = customerRows.filter(customer => customer.assigned_kode_odp && customer.assigned_nomor_port && (!validCoords(customer) || !mappedOdps.some(odp => sameOdpCode(odp.kode_odp, customer.assigned_kode_odp)))).length;
+        if (assignedNoLine) hints.push(`${assignedNoLine} pelanggan sudah punya relasi port tetapi garis belum bisa ditampilkan karena koordinat ODP/rumah belum lengkap atau ODP tidak ditemukan`);
+        if (missingOdp) hints.push(`${missingOdp} ODP belum punya koordinat`);
+        if (missingCustomers) hints.push(`${missingCustomers} pelanggan belum punya lokasi yang terverifikasi`);
+        if (mappedCustomers.length === 0 && customerRows.length > 0) hints.push('Belum ada rumah yang bisa diberi marker; koordinat harus tersimpan atau link Google Maps berisi koordinat yang dapat dibaca');
+        document.getElementById('mapHint').textContent = hints.join('. ') + '. Gunakan menu Kelola Lokasi Pelanggan untuk melengkapi titik rumah yang belum dipetakan.';
+    }
+    function matchesSearch(values, query) {
+        if (!query) return true;
+        return values.some(value => String(value ?? '').toLocaleLowerCase().includes(query));
+    }
+
+    function focusOdp(odpId) {
+        const odp = odpRows.find(row => Number(row.id) === Number(odpId));
+        if (!odp) return;
+        if (!validCoords(odp)) {
+            showAlert(`ODP ${odp.kode_odp} belum memiliki koordinat yang valid. Lengkapi lokasinya di menu Data ODP.`, 'error');
+            return;
+        }
+        const coords = [Number(odp.latitude), Number(odp.longitude)];
+        map.setView(coords, 17);
+        const marker = odpMarkersById.get(String(odp.id));
+        if (marker) marker.openPopup();
+    }
+
+    function focusCustomer(customerId) {
+        const customer = customerRows.find(row => Number(row.id) === Number(customerId));
+        if (!customer) return;
+        if (!validCoords(customer)) {
+            showAlert(`Lokasi rumah ${customer.pelanggan_nama} belum tersedia. Lengkapi melalui menu Lokasi Pelanggan.`, 'error');
+            return;
+        }
+        const coords = [Number(customer.latitude), Number(customer.longitude)];
+        map.setView(coords, 18);
+        const marker = customerMarkersById.get(String(customer.id));
+        if (marker) marker.openPopup();
+    }
+
+    function bindSearchResultActions(container) {
+        container.querySelectorAll('[data-focus-odp]').forEach(button => {
+            button.addEventListener('click', () => focusOdp(button.dataset.focusOdp));
+        });
+        container.querySelectorAll('[data-focus-customer]').forEach(button => {
+            button.addEventListener('click', () => focusCustomer(button.dataset.focusCustomer));
+        });
+    }
+
+    function renderList() {
+        const query = document.getElementById('searchNetwork').value.trim().toLocaleLowerCase();
+        const list = document.getElementById('networkSearchResults');
+        const summary = document.getElementById('searchSummary');
+
+        const filteredOdps = (searchKind === 'all' || searchKind === 'odp')
+            ? odpRows.filter(odp => matchesSearch([odp.kode_odp, odp.nama_odp, odp.alamat, odp.status], query))
+            : [];
+        // Untuk menghindari menampilkan ratusan kartu pelanggan sekaligus,
+        // daftar pelanggan baru dirender saat pengguna mengetik kata pencarian.
+        const filteredCustomers = (query && (searchKind === 'all' || searchKind === 'customer'))
+            ? customerRows.filter(customer => matchesSearch([
+                customer.pelanggan_nama, customer.alamat, customer.langganan,
+                customer.tanggal_pasang, customer.assigned_kode_odp,
+                customer.assigned_nomor_port, customer.link_maps, customer.id
+            ], query))
+            : [];
+
+        const maxEach = 60;
+        const shownOdps = filteredOdps.slice(0, maxEach);
+        const shownCustomers = filteredCustomers.slice(0, maxEach);
+        summary.textContent = query
+            ? `Ditemukan ${filteredOdps.length} ODP dan ${filteredCustomers.length} pelanggan${filteredOdps.length > maxEach || filteredCustomers.length > maxEach ? ' · daftar dibatasi 60 hasil per kategori' : ''}.`
+            : (searchKind === 'customer'
+                ? `Ada ${customerRows.length} pelanggan. Ketik nama atau alamat untuk mencari pelanggan.`
+                : `Ada ${odpRows.length} ODP. Ketik nama pelanggan, alamat, atau kode ODP untuk mencari.`);
+
+        const parts = [];
+        if (searchKind !== 'customer') {
+            parts.push(`<div class="mb-2 flex items-center justify-between"><h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500">ODP</h3><span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">${filteredOdps.length}</span></div>`);
+            if (!shownOdps.length) {
+                parts.push(`<div class="mb-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-500">${query ? 'Tidak ada ODP yang cocok.' : 'Belum ada data ODP.'}</div>`);
+            } else {
+                parts.push(shownOdps.map(odp => {
+                    const mapped = validCoords(odp);
+                    const used = Number(odp.port_terpakai || 0);
+                    const capacity = Number(odp.kapasitas_port || 0);
+                    const color = statusColor(odp.status);
+                    return `<article class="mb-3 rounded-xl border border-slate-200 p-4">
+                        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><h3 class="break-words font-extrabold text-slate-800">${escapeHtml(odp.kode_odp)}</h3><p class="mt-0.5 break-words text-sm text-slate-600">${escapeHtml(odp.nama_odp)}</p></div><span class="shrink-0 rounded-full px-2 py-1 text-[11px] font-bold" style="background:${color}18;color:${color}">${escapeHtml(odp.status)}</span></div>
+                        <p class="mt-2 text-xs leading-5 text-slate-500">${escapeHtml(odp.alamat || 'Alamat belum dicatat')}</p>
+                        <div class="mt-3 flex items-center justify-between gap-2 text-xs"><span class="font-semibold text-slate-600">Port ${used}/${capacity} terpakai</span><span class="${mapped ? 'text-emerald-700' : 'text-amber-700'} font-semibold">${mapped ? 'Lokasi tersedia' : 'Koordinat belum ada'}</span></div>
+                        ${mapped ? `<button type="button" data-focus-odp="${Number(odp.id)}" class="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><i class="fas fa-location-crosshairs mr-1"></i> Lihat di Peta</button>` : `<a href="data-odp.html" class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-50"><i class="fas fa-pen-to-square"></i> Lengkapi lokasi ODP</a>`}
+                        <a href="port-pelanggan.html?odp_id=${Number(odp.id)}" class="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><i class="fas fa-ethernet"></i> Port &amp; Pelanggan</a>
+                    </article>`;
+                }).join(''));
+            }
+        }
+
+        if (searchKind === 'customer' || (searchKind === 'all' && query)) {
+            parts.push(`<div class="mb-2 mt-4 flex items-center justify-between"><h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500">Pelanggan</h3><span class="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700">${filteredCustomers.length}</span></div>`);
+            if (!query) {
+                parts.push('<div class="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">Ketik nama pelanggan atau alamat untuk mulai mencari.</div>');
+            } else if (!shownCustomers.length) {
+                parts.push('<div class="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">Tidak ada pelanggan yang cocok dengan pencarian.</div>');
+            } else {
+                parts.push(shownCustomers.map(customer => {
+                    const mapped = validCoords(customer);
+                    const assigned = customer.assigned_kode_odp
+                        ? `${escapeHtml(customer.assigned_kode_odp)}${customer.assigned_nomor_port ? ` · Port ${Number(customer.assigned_nomor_port)}` : ''}`
+                        : 'ODP/port belum dicatat';
+                    return `<article class="mb-3 rounded-xl border border-blue-100 p-4">
+                        <div class="flex items-start gap-3"><div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600"><i class="fas fa-house"></i></div><div class="min-w-0 flex-1"><h3 class="break-words font-extrabold text-slate-800">${escapeHtml(customer.pelanggan_nama || 'Pelanggan tanpa nama')}</h3><p class="mt-1 break-words text-xs leading-5 text-slate-500">${escapeHtml(customer.alamat || 'Alamat belum dicatat')}</p></div></div>
+                        ${customer.langganan ? `<p class="mt-2 text-xs text-slate-600">Paket: ${escapeHtml(customer.langganan)}</p>` : ''}
+                        <p class="mt-1 text-xs text-slate-600">Terhubung: <b>${assigned}</b></p>
+                        <p class="mt-2 text-xs font-semibold ${mapped ? 'text-emerald-700' : 'text-amber-700'}">${mapped ? 'Lokasi tersedia di peta' : 'Lokasi belum ditentukan'}</p>
+                        ${mapped ? `<button type="button" data-focus-customer="${Number(customer.id)}" class="mt-3 w-full rounded-lg border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50"><i class="fas fa-location-crosshairs mr-1"></i> Lihat rumah di Peta</button>` : `<a href="lokasi-pelanggan.html" class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-50"><i class="fas fa-map-pin"></i> Lengkapi lokasi pelanggan</a>`}
+                    </article>`;
+                }).join(''));
+            }
+            if (filteredCustomers.length > maxEach) parts.push(`<p class="mb-3 text-xs text-slate-500">Menampilkan 60 dari ${filteredCustomers.length} pelanggan. Tambahkan kata kunci agar hasil lebih spesifik.</p>`);
+        }
+        list.innerHTML = parts.join('') || '<div class="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Tidak ada hasil yang cocok dengan pencarian.</div>';
+        bindSearchResultActions(list);
+    }
+
+    function setSearchKind(kind) {
+        searchKind = kind;
+        document.querySelectorAll('[data-search-kind]').forEach(button => {
+            const active = button.dataset.searchKind === kind;
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+            button.classList.toggle('is-active', active);
+        });
+        renderList();
+    }
+    async function loadNetworkData() {
+        hideAlert();
+        const refreshBtn = document.getElementById('refreshBtn');
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat...';
+        try {
+            const odpReq = fetch(`${API_ODP}?action=list`, { credentials: 'same-origin', cache: 'no-store' })
+                .then(async response => ({ response, json: await response.json() }));
+            const customerReq = fetch(`${API_CUSTOMERS}?action=list`, { credentials: 'same-origin', cache: 'no-store' })
+                .then(async response => ({ response, json: await response.json() }))
+                .catch(error => ({ error }));
+            const [odpResult, customerResult] = await Promise.all([odpReq, customerReq]);
+            if (!odpResult.response.ok || !odpResult.json.success) throw new Error(odpResult.json.message || 'Data ODP gagal dimuat. Pastikan sudah login.');
+            odpRows = Array.isArray(odpResult.json.data) ? odpResult.json.data : [];
+            if (customerResult.error || !customerResult.response?.ok || !customerResult.json?.success) {
+                customerRows = [];
+                showAlert('Data ODP berhasil dimuat, tetapi data lokasi pelanggan gagal dimuat. Pastikan SQL koordinat pelanggan sudah dijalankan dan api_lokasi_pelanggan.php ada satu folder dengan koneksi.php.');
+            } else {
+                customerRows = Array.isArray(customerResult.json.data) ? customerResult.json.data : [];
+            }
+            renderMap();
+            renderList();
+        } catch (error) {
+            showAlert(`${error.message} Pastikan sesi login aktif, api_odp.php tersedia, dan koneksi internet aktif untuk peta dasar.`, 'error');
+            document.getElementById('networkSearchResults').innerHTML = '<div class="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">Data jaringan gagal dimuat. Periksa pesan di atas.</div>';
+            document.getElementById('searchSummary').textContent = 'Data jaringan gagal dimuat.';
+            document.getElementById('mapHint').textContent = 'Data belum berhasil diambil dari server.';
+        } finally {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fas fa-rotate"></i> Muat Ulang Data';
+        }
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', loadNetworkData);
+    document.getElementById('searchNetwork').addEventListener('input', renderList);
+    document.querySelectorAll('[data-search-kind]').forEach(button => button.addEventListener('click', () => setSearchKind(button.dataset.searchKind)));
+    window.addEventListener('resize', () => setTimeout(() => map.invalidateSize(), 100));
+    fetch('sidebar.html?v=sidebar-clean-20261017')
+        .then(response => { if (!response.ok) throw new Error('Sidebar tidak ditemukan'); return response.text(); })
+        .then(html => {
+            document.getElementById('sidebar-target').innerHTML = html;
+            const currentPath = window.location.pathname.split('/').pop();
+            document.querySelectorAll('.nav-link').forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('bg-white/20', 'text-white', 'shadow-lg', 'font-bold');
+                    const icon = link.querySelector('i');
+                    if (icon) { icon.classList.remove('text-white/40'); icon.classList.add('text-white'); }
+                }
+            });
+            fetch('cek_session.php', { credentials: 'same-origin' })
+                .then(response => response.json())
+                .then(session => {
+                    if (session.logged_in) {
+                        const name = document.getElementById('sidebarUserName');
+                        const role = document.getElementById('sidebarUserRole');
+                        if (name) name.textContent = session.nama || 'Pengguna';
+                        if (role) role.textContent = session.role === 'superadmin' ? 'Superadmin' : 'Teknisi';
+                    }
+                }).catch(() => {});
+        }).catch(error => console.error('Gagal memuat sidebar:', error));
+    loadNetworkData();
+    setTimeout(() => map.invalidateSize(), 250);
+    setTimeout(() => map.invalidateSize(), 1000);
+    </script>
+</body>
+</html>

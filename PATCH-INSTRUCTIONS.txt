@@ -1,0 +1,23 @@
+CV Media Computindo — Perbaikan Responsif dan Dashboard Jaringan
+
+ISI PATCH
+- responsive.css: perbaikan layout utama desktop/mobile untuk semua halaman.
+- Semua halaman HTML utama: menambahkan stylesheet responsive.css.
+- dashboard.html: ringkasan jaringan baru dan penyempurnaan layout dashboard.
+- dashboard.js: menampilkan nilai ringkasan jaringan dari API.
+- get_dashboard.php: menghitung ringkasan ODP, lokasi pelanggan, kapasitas port, dan port terhubung.
+
+CARA MEMASANG
+1. Buat cadangan folder proyek yang sedang berjalan.
+2. Ekstrak ZIP ini.
+3. Salin/merge isi folder patch ke folder website aktif, misalnya C:\\xampp\\htdocs\\media-computindo.
+4. Pilih Replace/Ganti bila diminta untuk file dengan nama sama.
+5. Tidak perlu menjalankan SQL dan tidak perlu mengganti koneksi.php atau API modul jaringan.
+6. Buka dashboard.html melalui localhost, lalu tekan Ctrl+F5.
+7. Tes di desktop dan HP: menu samping, kartu statistik, tabel pemasangan terbaru, serta Ringkasan Jaringan.
+
+CATATAN
+- Patch ini tidak menghapus atau mengubah data database.
+- Angka ringkasan jaringan dibaca dari tabel odp, odp_port, dan pemasangan.
+- 'Port Belum Terhubung' dihitung sebagai total kapasitas port semua ODP dikurangi jumlah port yang memiliki pemasangan; status port Rusak/Nonaktif tetap harus diperiksa sebelum digunakan.
+- Sintaks file PHP dan JavaScript telah diperiksa. Pengujian runtime tetap perlu dilakukan pada XAMPP lokal.

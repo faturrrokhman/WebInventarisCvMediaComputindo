@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <style id="sidebar-scrollbar-fix">
+      #mainSidebar .sidebar-nav-scroll { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+      #mainSidebar .sidebar-nav-scroll::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+    </style>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CV Media Computindo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+    .sidebar { background-color: #1e50ff; }
+    
+    /* Indikator Menu Aktif */
+    .active-menu { 
+        background: linear-gradient(90deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 100%);
+        border-left: 4px solid white;
+        border-radius: 0 12px 12px 0;
+        font-weight: bold;
+    }
+
+    /* Animasi Masuk: Muncul dari bawah + Fade In */
+    @keyframes fadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Animasi Keluar: Menghilang ke samping */
+    @keyframes fadeOut {
+        from { opacity: 1; transform: scale(1); }
+        to { opacity: 0; transform: scale(0.95); }
+    }
+
+    .animate-page-in {
+        animation: fadeUp 0.5s ease-out forwards;
+    }
+
+    .animate-page-out {
+        animation: fadeOut 0.3s ease-in forwards;
+    }
+
+    /* Efek Hover Menu Sidebar yang Unik */
+    .nav-link {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .nav-link:hover {
+        transform: translateX(8px);
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+</style>
+    <link rel="stylesheet" href="responsive.css?v=20261015">
+</head>
+<body class="bg-slate-50 flex min-h-screen">
+
+<div id="sidebar-target"></div>
+
+    <main class="w-full md:ml-64 p-4 pt-24 md:p-10 animate-page-in">
+        <header class="mb-8">
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-800">Dashboard</h2>
+            <p class="text-slate-500">Selamat datang di sistem inventory CV Media Computindo</p>
+        </header>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative">
+                <p class="text-slate-500 text-sm font-medium">Total Barang</p>
+                <h3 id="statTotalBarang" class="text-4xl font-bold mt-4">0</h3>
+                <p class="text-xs text-slate-400 mt-1">Jenis barang</p>
+                <i class="fas fa-cube absolute top-6 right-6 text-blue-500 bg-blue-50 p-2 rounded-lg"></i>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative">
+                <p class="text-slate-500 text-sm font-medium">Total Pemasangan</p>
+                <h3 id="statTotalPemasangan" class="text-4xl font-bold mt-4">0</h3>
+                <p class="text-xs text-slate-400 mt-1">Pemasangan terdaftar</p>
+                <i class="fas fa-wrench absolute top-6 right-6 text-green-500 bg-green-50 p-2 rounded-lg"></i>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative">
+                <p class="text-slate-500 text-sm font-medium text-orange-600">Stok Menipis</p>
+                <h3 id="statStokMenipis" class="text-4xl font-bold mt-4">0</h3>
+                <p class="text-xs text-slate-400 mt-1">Barang perlu restock</p>
+                <i class="fas fa-exclamation-triangle absolute top-6 right-6 text-orange-500 bg-orange-50 p-2 rounded-lg"></i>
+            </div>
+        </div>
+
+        <section class="mb-8" aria-labelledby="networkSummaryTitle">
+            <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h3 id="networkSummaryTitle" class="text-lg sm:text-xl font-extrabold text-slate-800">Ringkasan Jaringan</h3>
+                    <p class="mt-1 text-sm text-slate-500">Ikhtisar ODP, lokasi pelanggan, dan kapasitas port.</p>
+                </div>
+                <a href="peta-jaringan.html" class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <i class="fas fa-map-marked-alt"></i> Buka Peta Jaringan
+                </a>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <a href="data-odp.html" class="group rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <div class="flex items-center justify-between gap-3"><p class="text-sm font-semibold text-slate-500">Total ODP</p><span class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><i class="fas fa-network-wired"></i></span></div>
+                    <p id="statTotalODP" class="mt-3 text-3xl font-black text-slate-800">—</p>
+                    <p id="statODPDipetakan" class="mt-1 text-xs leading-5 text-slate-500">Memuat lokasi ODP...</p>
+                </a>
+                <a href="lokasi-pelanggan.html" class="group rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <div class="flex items-center justify-between gap-3"><p class="text-sm font-semibold text-slate-500">Pelanggan Terpetakan</p><span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><i class="fas fa-house-location-dot"></i></span></div>
+                    <p id="statPelangganTerpetakan" class="mt-3 text-3xl font-black text-slate-800">—</p>
+                    <p id="statPelangganTotal" class="mt-1 text-xs leading-5 text-slate-500">Memuat lokasi pelanggan...</p>
+                </a>
+                <a href="port-pelanggan.html" class="group rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <div class="flex items-center justify-between gap-3"><p class="text-sm font-semibold text-slate-500">Port Terpakai</p><span class="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600"><i class="fas fa-ethernet"></i></span></div>
+                    <p id="statPortTerpakai" class="mt-3 text-3xl font-black text-slate-800">—</p>
+                    <p id="statPortKapasitas" class="mt-1 text-xs leading-5 text-slate-500">Memuat kapasitas port...</p>
+                </a>
+                <a href="port-pelanggan.html" class="group rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <div class="flex items-center justify-between gap-3"><p class="text-sm font-semibold text-slate-500">Port Belum Terhubung</p><span class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"><i class="fas fa-plug-circle-check"></i></span></div>
+                    <p id="statPortKosong" class="mt-3 text-3xl font-black text-slate-800">—</p>
+                    <p class="mt-1 text-xs leading-5 text-slate-500">Sisa kapasitas berdasarkan total slot ODP.</p>
+                </a>
+            </div>
+            <p id="networkSummaryMessage" class="mt-3 text-xs text-slate-500" role="status" aria-live="polite">Mengambil ringkasan jaringan dari database...</p>
+        </section>
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6">
+            <div class="col-span-1 xl:col-span-2 bg-white p-4 sm:p-6 xl:p-8 rounded-3xl shadow-sm border border-slate-100">
+                <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-3">
+                    <i class="fas fa-history text-blue-500"></i> Pemasangan Terbaru
+                </h4>
+                
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full text-left border-collapse min-w-[500px]">
+                        <thead>
+                            <tr class="text-slate-400 text-[10px] uppercase tracking-widest border-b">
+                            <th class="py-4 px-2">Pelanggan & Lokasi</th>
+                            <th class="py-4 px-2">Material Terpasang</th>
+                            <th class="py-4 px-2 text-center">Langganan</th>
+                            <th class="py-4 px-2 text-right">Tanggal</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tabelPemasangan" class="text-slate-700">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle text-orange-500"></i> Stok Menipis
+                </h4>
+                <div id="listStokMenipis" class="space-y-4">
+                    </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="dashboard.js?v=20261018"></script>
+    <script src="dashboard-network.js?v=20261018"></script>
+
+    <script>
+        // Memanggil Sidebar
+        fetch('sidebar.html?v=sidebar-clean-20261017')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('sidebar-target').innerHTML = data;
+
+                // Mengatur Efek Menu Aktif
+                const path = window.location.pathname.split("/").pop();
+                const links = document.querySelectorAll('.nav-link');
+                links.forEach(link => {
+                    if (link.getAttribute('href') === path) {
+                        link.classList.add('bg-white/20', 'text-white', 'shadow-lg', 'font-bold');
+                        link.querySelector('i').classList.replace('text-white/50', 'text-white');
+                    }
+                });
+
+                // Menarik Data Session untuk Profil Sidebar
+                fetch('cek_session.php')
+                .then(res => res.json())
+                .then(session => {
+                    if (session.logged_in) {
+                        const elName = document.getElementById('sidebarUserName');
+                        const elRole = document.getElementById('sidebarUserRole');
+                        
+                        if (elName) elName.innerText = session.nama; // Mengambil username
+                        
+                        if (elRole) {
+                            if (session.role === 'superadmin') {
+                                elRole.innerHTML = '<span class="text-emerald-400"><i class="fas fa-crown"></i> Superadmin</span>';
+                            } else {
+                                elRole.innerHTML = '<span class="text-blue-300"><i class="fas fa-tools"></i> Teknisi</span>';
+                            }
+                        }
+                    }
+                })
+                .catch(err => console.log("Sidebar session check:", err));
+            });
+    </script>
+</body>
+</html>
